@@ -8,6 +8,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { forgotPasswordTemplate } from "../template.js";
 import { publicToTopic } from "../producer.js";
+import { redisClient } from "../index.js";
 dotenv.config();
 
 export const registerUser = TryCatch(async (req, res, next) => {
@@ -147,6 +148,8 @@ export const forgotPassword = TryCatch(async (req, res, next) => {
   );
 
   const resetLink = `${process.env.FRONTEND_URL}/reset/${resetToken}`;
+
+  await redisClient.set(`forgot:${email}`, resetToken, { EX: 60 * 15 });
   const message = {
     to: email,
     subject: "Reset Password",
