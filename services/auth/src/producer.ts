@@ -39,3 +39,33 @@ export const connectKafka = async () => {
     console.log("Error in kafka connection", error);
   }
 };
+
+export const publicToTopic = async (topic: string, message: any) => {
+  if (!producer) {
+    console.log("kafka producer is not initilized");
+    return;
+  }
+  try {
+    await producer.send({
+      topic: topic,
+      messages: [
+        {
+          value: JSON.stringify(message),
+        },
+      ],
+    });
+  } catch (error) {
+    console.log("Error in kafka producer PublicToTopic", error);
+  }
+};
+
+export const disconnectKafka = async () => {
+  try {
+    if (producer) {
+      await producer.disconnect();
+      console.log("✅ kafka producer disconnected");
+    }
+  } catch (error) {
+    console.log("Error in kafka producer disconnect", error);
+  }
+};
