@@ -44,7 +44,7 @@ async function initDb() {
   skill_id INTEGER NOT NULL REFERENCES skills(skill_id) ON DELETE CASCADE,
   PRIMARY KEY (user_id,skill_id)
   )`;
-    console.log("DataBase Table Check/Created Successfully");
+    console.log("✅ DataBase Table Check/Created Successfully");
   } catch (error) {
     console.log("Error initializing database", error);
     process.exit(1);
