@@ -153,7 +153,10 @@ export const forgotPassword = TryCatch(async (req, res, next) => {
     html: forgotPasswordTemplate(resetLink),
   };
 
-  publicToTopic("send-mail", message);
+  publicToTopic("send-mail", message).catch((err) => {
+    console.log("Error in mail service", err);
+  });
+
   res.json({
     success: true,
     message: "Reset password link sent successfully",
