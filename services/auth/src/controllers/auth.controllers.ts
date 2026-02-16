@@ -167,3 +167,46 @@ export const forgotPassword = TryCatch(async (req, res, next) => {
     // token: resetLink,
   });
 });
+
+export const resetPassword = TryCatch(async (req, res, next) => {
+  const { token } = req.params;
+  const { password } = req.body;
+
+  let decoded: any;
+
+  try {
+    decoded = jwt.verify(token as string, process.env.JWT_SECRET as string);
+  } catch (error) {
+    throw new ErrorHandler(401, "Expired token");
+  }
+
+  if (decoded.type !== "reset") {
+    throw new ErrorHandler(401, "Invalid token");
+  }
+
+  const email = decoded.email;
+
+  const storedToken = await redisClient.get(`forgot:${email}`);
+
+  if (!storedToken || storedToken !== token) {
+    throw new ErrorHandler(401, "Token has been expired or invalid");
+  }
+
+  const user = await sql`SELECT user_id FROM users WHERE email=${email}`;
+
+  if (user.length === 0) {
+    throw new ErrorHandler(404, "User not found");
+  }
+
+  const userObject = user[0];
+  const hashPassword = await bcrypt.hash(password, 10);
+
+  await sql`UPDATE users SET password=${hashPassword} WHERE user_id=${userObject.user_id}`;
+
+  await redisClient.del(`forgot:${email}`);
+
+  res.json({
+    success: true,
+    message: "Password changed successfully",
+  });
+});
