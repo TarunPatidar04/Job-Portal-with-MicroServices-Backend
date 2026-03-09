@@ -50,3 +50,29 @@ export const getUserProfile = TryCatch(async (req, res, next) => {
     user,
   });
 });
+
+export const updatedUserProfile = TryCatch(
+  async (req: AuthenticatedRequest, res, next) => {
+    const user = req.user;
+
+    if (!user) {
+      throw new ErrorHandler(404, "User not found! Authenticated required");
+    }
+    const { name, phoneNumber, bio } = req.body;
+
+    const newName = name || user.name;
+    const newPhoneNumber = phoneNumber || user.phone_number;
+    const newBio = bio || user.bio;
+
+    const [updatedUser] = await sql`
+    UPDATE users SET name=${newName},phone_number=${newPhoneNumber},bio=${newBio}
+    WHERE user_id=${user.user_id}
+    RETURNING user_id,name,email,phone_number,bio
+    `;
+
+    res.json({
+      message: "Profile Updated Successfully",
+      updatedUser,
+    });
+  },
+);
