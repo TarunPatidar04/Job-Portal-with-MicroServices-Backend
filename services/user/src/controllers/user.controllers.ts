@@ -1,8 +1,11 @@
 import { AuthenticatedRequest } from "../middleware/auth.js";
+import getBuffer from "../utils/buffer.js";
 import { sql } from "../utils/db.js";
 import ErrorHandler from "../utils/errorHandler.js";
 import { TryCatch } from "../utils/TryCatch.js";
-
+import axios from "axios";
+import dotenv from "dotenv";
+dotenv.config();
 export const myProfile = TryCatch(
   async (req: AuthenticatedRequest, res, next) => {
     const user = req.user;
@@ -13,6 +16,10 @@ export const myProfile = TryCatch(
     });
   },
 );
+interface UploadResponse {
+  url: string;
+  public_id: string;
+}
 
 export const getUserProfile = TryCatch(async (req, res, next) => {
   const { userId } = req.params;
@@ -72,6 +79,48 @@ export const updatedUserProfile = TryCatch(
 
     res.json({
       message: "Profile Updated Successfully",
+      updatedUser,
+    });
+  },
+);
+
+export const updatedProfilePic = TryCatch(
+  async (req: AuthenticatedRequest, res) => {
+    const user = req.user;
+
+    if (!user) {
+      throw new ErrorHandler(404, "User not found! Authenticated required");
+    }
+
+    const file = req.file;
+    if (!file) {
+      throw new ErrorHandler(400, "Please upload a file");
+    }
+
+    const oldPublicId = user.profile_pic_public_id;
+
+    const fileBuffer = getBuffer(file);
+
+    if (!fileBuffer || !fileBuffer.content) {
+      throw new ErrorHandler(500, "failed to generate buffer");
+    }
+
+    const { data: uploadResult } = await axios.post<UploadResponse>(
+      `${process.env.UPLOAD_SERVICE}/api/utils/upload`,
+      {
+        buffer: fileBuffer.content,
+        public_id: oldPublicId,
+      },
+    );
+
+    const [updatedUser] = await sql`
+    UPDATE users SET profile_pic=${uploadResult.url},profile_pic_public_id= ${uploadResult.public_id}
+    WHERE user_id=${user.user_id}
+    RETURNING profile_pic,name,user_id
+    `;
+
+    res.json({
+      message: "Profile Pic Updated Successfully",
       updatedUser,
     });
   },
