@@ -31,9 +31,18 @@ async function initDB() {
     description TEXT NOT NULL,
     website VARCHAR(255) NOT NULL,
     logo VARCHAR(255) NOT NULL,
-    logo_public_id INTEGER NOT NULL,
+    logo_public_id VARCHAR(255) NOT NULL,
+    recruiter_id INTEGER NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
+    `;
+
+    await sql`
+    ALTER TABLE companies ADD COLUMN IF NOT EXISTS recruiter_id INTEGER NOT NULL DEFAULT 0;
+    `;
+
+    await sql`
+    ALTER TABLE companies ALTER COLUMN logo_public_id TYPE VARCHAR(255);
     `;
 
     await sql`
