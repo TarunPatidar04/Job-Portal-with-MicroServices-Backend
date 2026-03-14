@@ -208,3 +208,47 @@ export const updateJob = TryCatch(async (req: AuthenticatedRequest, res) => {
     job: updatedJob,
   });
 });
+
+export const getAllCompany = TryCatch(
+  async (req: AuthenticatedRequest, res) => {
+    const companies =
+      await sql`SELECT * FROM companies WHERE recruiter_id=${req.user?.user_id}`;
+
+    return res.status(200).json({
+      success: true,
+      message: "Companies fetched successfully",
+      companies,
+    });
+  },
+);
+
+export const getCompanyDetails = TryCatch(
+  async (req: AuthenticatedRequest, res) => {
+    const { companyId } = req.params;
+
+    if (!companyId) {
+      throw new ErrorHandler(400, "Company ID is required");
+    }
+
+    const [companyData] = await sql`
+      SELECT c.*,COALESCE(
+      (
+      SELECT json_agg(j.*) FROM jobs j WHERE j.company_id = c.company_id
+      ),
+      '[]'::json
+      ) AS jobs
+      FROM companies c
+      WHERE c.company_id = ${companyId} GROUP BY c.company_id;
+      `;
+
+    if (!companyData) {
+      throw new ErrorHandler(404, "Company not found");
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Company details fetched successfully",
+      companyData,
+    });
+  },
+);
