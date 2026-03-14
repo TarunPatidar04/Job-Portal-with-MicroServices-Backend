@@ -252,3 +252,90 @@ export const deleteSkillFromUser = TryCatch(
     });
   },
 );
+
+export const applyForJob = TryCatch(async (req: AuthenticatedRequest, res) => {
+  const user = req.user;
+
+  if (!user) {
+    throw new ErrorHandler(401, "Authentication Required");
+  }
+
+  if (user.role !== "jobseeker") {
+    throw new ErrorHandler(403, "Only JobSeekers can apply for jobs");
+  }
+
+  const applicants_id = user.user_id;
+  const resume = user.resume;
+
+  if (!resume) {
+    throw new ErrorHandler(
+      400,
+      "Please upload a resume in your profile first after you can apply for this job",
+    );
+  }
+  const { job_id } = req.body;
+
+  if (!job_id) {
+    throw new ErrorHandler(400, "Please provide a job id");
+  }
+
+  const [job] = await sql` SELECT is_active FROM jobs WHERE job_id=${job_id}`;
+
+  if (!job) {
+    throw new ErrorHandler(400, "Job not found");
+  }
+  if (!job.is_active) {
+    throw new ErrorHandler(400, "This job is not active");
+  }
+  // ---
+  const now = Date.now();
+
+  const subTime = req.user?.subscription
+    ? new Date(req.user.subscription).getTime()
+    : 0;
+
+  const isSubscribed = subTime > now;
+  // ----
+
+  let newApplication;
+
+  try {
+    [newApplication] =
+      await sql`INSERT INTO applications (job_id,applicant_id,applicant_email,resume,subscribed)
+     VALUES (${job_id},${applicants_id},${user?.email},${resume},${isSubscribed})`;
+  } catch (error: any) {
+    if (error.code === "23505") {
+      throw new ErrorHandler(409, "You have already applied for this job");
+    }
+    throw error;
+  }
+
+  res.json({
+    message: "Application submitted successfully",
+    newApplication,
+  });
+});
+
+export const getAllApplications = TryCatch(
+  async (req: AuthenticatedRequest, res) => {
+    const user = req.user;
+
+    if (!user) {
+      throw new ErrorHandler(401, "Authentication Required");
+    }
+
+    if (user.role !== "jobseeker") {
+      throw new ErrorHandler(403, "Only JobSeekers can apply for jobs");
+    }
+
+    const applications =
+      await sql`SELECT a.*,j.title as job_title,j.salary AS job_salary,j.location AS job_location
+    FROM applications a
+    JOIN jobs j ON a.job_id=j.job_id
+    WHERE a.applicant_id=${user.user_id}
+    `;
+    res.json({
+      applications,
+    });
+  },
+);
