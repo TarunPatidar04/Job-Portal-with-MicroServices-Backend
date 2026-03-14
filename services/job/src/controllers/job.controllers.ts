@@ -332,7 +332,7 @@ export const getAllApplicationForJob = TryCatch(
     }
 
     if (user?.role !== "recruiter") {
-      throw new ErrorHandler(403, "Forbidden : Only recruiter can create job");
+      throw new ErrorHandler(403, "Forbidden : Only recruiter can view a job");
     }
 
     const { jobId } = req.params;
@@ -341,7 +341,8 @@ export const getAllApplicationForJob = TryCatch(
       throw new ErrorHandler(400, "Job ID is required");
     }
 
-    const [job] = await sql`SELECT posted_by_recuriter_id FROM jobs WHERE job_id=${jobId}`;
+    const [job] =
+      await sql`SELECT posted_by_recuriter_id FROM jobs WHERE job_id=${jobId}`;
 
     if (!job) {
       throw new ErrorHandler(404, "Job not found");
@@ -354,7 +355,8 @@ export const getAllApplicationForJob = TryCatch(
       );
     }
 
-    const applications = await sql`SELECT * FROM applications WHERE job_id=${jobId} ORDER BY subscribed DESC,applied_at ASC`;
+    const applications =
+      await sql`SELECT * FROM applications WHERE job_id=${jobId} ORDER BY subscribed DESC,applied_at ASC`;
 
     return res.status(200).json({
       success: true,
