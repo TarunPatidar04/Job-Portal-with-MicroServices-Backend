@@ -4,6 +4,8 @@ import getBuffer from "../utils/buffer.js";
 import { sql } from "../utils/db.js";
 import ErrorHandler from "../utils/errorHandler.js";
 import { TryCatch } from "../utils/TryCatch.js";
+import { applicationStatusUpdateTemplate } from "../template.js";
+import { publicToTopic } from "../producer.js";
 
 export const createCompany = TryCatch(
   async (req: AuthenticatedRequest, res) => {
@@ -362,6 +364,66 @@ export const getAllApplicationForJob = TryCatch(
       success: true,
       message: "Applications fetched successfully",
       applications,
+    });
+  },
+);
+
+export const updateApplication = TryCatch(
+  async (req: AuthenticatedRequest, res) => {
+    const user = req.user;
+
+    if (!user) {
+      throw new ErrorHandler(401, "Authencation required");
+    }
+
+    if (user?.role !== "recruiter") {
+      throw new ErrorHandler(403, "Forbidden : Only recruiter can view a job");
+    }
+
+    const { id } = req.params;
+
+    const [application] = await sql`
+    SELECT * FROM applications WHERE application_id=${id}
+    `;
+
+    if (!application) {
+      throw new ErrorHandler(404, "Application not found");
+    }
+
+    const [job] = await sql`
+   SELECT posted_by_recuriter_id,title FROM jobs WHERE job_id=${application.job_id}
+    `;
+
+    if (!job) {
+      throw new ErrorHandler(404, "Job not found");
+    }
+
+    if (job.posted_by_recuriter_id !== user.user_id) {
+      throw new ErrorHandler(
+        403,
+        "Forbidden : Only recruiter can update applications for their job",
+      );
+    }
+
+    const [updatedApplication] = await sql`
+    UPDATE applications SET status=${req.body.status} WHERE application_id=${id}
+    RETURNING *;
+    `;
+
+    const message = {
+      to: application.applicant_email,
+      subject: "Application status updated",
+      html: applicationStatusUpdateTemplate(job.title),
+    };
+
+    publicToTopic("send-mail", message).catch((error) => {
+      console.log("Failed to publish message to kafka", error);
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Application updated successfully",
+      application: updatedApplication,
     });
   },
 );
