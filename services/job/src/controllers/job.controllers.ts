@@ -253,14 +253,13 @@ export const getCompanyDetails = TryCatch(
   },
 );
 
-export const getAllActiveJobs = TryCatch(
-  async (req: AuthenticatedRequest, res) => {
-    const { title, location } = req.query as {
-      title?: string;
-      location?: string;
-    };
+export const getAllActiveJobs = TryCatch(async (req, res) => {
+  const { title, location } = req.query as {
+    title?: string;
+    location?: string;
+  };
 
-    let queryString = `
+  let queryString = `
   SELECT j.job_id,
   j.title,
   j.description,
@@ -278,29 +277,48 @@ export const getAllActiveJobs = TryCatch(
   WHERE j.is_active = true
   `;
 
-    const values = [];
-    let paramIndex = 1;
+  const values = [];
+  let paramIndex = 1;
 
-    if (title) {
-      queryString += ` AND j.title ILIKE $${paramIndex}`;
-      values.push(`%${title}%`);
-      paramIndex++;
-    }
+  if (title) {
+    queryString += ` AND j.title ILIKE $${paramIndex}`;
+    values.push(`%${title}%`);
+    paramIndex++;
+  }
 
-    if (location) {
-      queryString += ` AND j.location ILIKE $${paramIndex}`;
-      values.push(`%${location}%`);
-      paramIndex++;
-    }
+  if (location) {
+    queryString += ` AND j.location ILIKE $${paramIndex}`;
+    values.push(`%${location}%`);
+    paramIndex++;
+  }
 
-    queryString += ` ORDER BY j.created_at DESC`;
+  queryString += ` ORDER BY j.created_at DESC`;
 
-    const jobs = (await sql.query(queryString, values)) as any[];
+  const jobs = (await sql.query(queryString, values)) as any[];
 
-    return res.status(200).json({
-      success: true,
-      message: "Jobs fetched successfully",
-      jobs,
-    });
-  },
-);
+  return res.status(200).json({
+    success: true,
+    message: "Jobs fetched successfully",
+    jobs,
+  });
+});
+
+export const getSingleJob = TryCatch(async (req, res) => {
+  const { jobId } = req.params;
+
+  if (!jobId) {
+    throw new ErrorHandler(400, "Job ID is required");
+  }
+
+  const [job] = await sql`SELECT * FROM jobs WHERE job_id=${jobId}`;
+
+  if (!job) {
+    throw new ErrorHandler(404, "Job not found");
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "Job fetched successfully",
+    job,
+  });
+});
