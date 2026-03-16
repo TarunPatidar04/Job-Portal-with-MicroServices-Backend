@@ -235,7 +235,28 @@ export const getCompanyDetails = TryCatch(
     const [companyData] = await sql`
       SELECT c.*,COALESCE(
       (
-      SELECT json_agg(j.*) FROM jobs j WHERE j.company_id = c.company_id
+      SELECT json_agg(
+        json_build_object(
+          'job_id', j.job_id,
+          'title', j.title,
+          'description', j.description,
+          'salary', j.salary,
+          'location', j.location,
+          'job_type', j.job_type,
+          'role', j.role,
+          'work_location', j.work_location,
+          'openings', j.openings,
+          'is_active', j.is_active,
+          'created_at', j.created_at,
+          'application_count', COALESCE(app_count.count, 0)
+        )
+      ) FROM jobs j 
+      LEFT JOIN (
+        SELECT job_id, COUNT(*) as count
+        FROM applications 
+        GROUP BY job_id
+      ) app_count ON j.job_id = app_count.job_id
+      WHERE j.company_id = c.company_id
       ),
       '[]'::json
       ) AS jobs
@@ -409,6 +430,13 @@ export const updateApplication = TryCatch(
     UPDATE applications SET status=${req.body.status} WHERE application_id=${id}
     RETURNING *;
     `;
+
+    // If status is 'Hired', deactivate the job to prevent more applications
+    if (req.body.status === 'Hired') {
+      await sql`
+      UPDATE jobs SET is_active=false WHERE job_id=${application.job_id}
+      `;
+    }
 
     const message = {
       to: application.applicant_email,
