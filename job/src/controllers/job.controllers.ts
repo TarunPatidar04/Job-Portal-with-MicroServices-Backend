@@ -358,7 +358,7 @@ export const getAllApplicationForJob = TryCatch(
     }
 
     const applications =
-      await sql`SELECT * FROM applications WHERE job_id=${jobId} ORDER BY subscribed DESC,applied_at ASC`;
+      await sql`SELECT a.*, u.name as applicant_name FROM applications a JOIN users u ON a.applicant_id = u.user_id WHERE a.job_id=${jobId} ORDER BY a.subscribed DESC, a.applied_at ASC`;
 
     return res.status(200).json({
       success: true,
