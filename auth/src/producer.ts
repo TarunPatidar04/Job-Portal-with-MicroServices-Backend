@@ -7,10 +7,21 @@ let admin: Admin;
 
 export const connectKafka = async () => {
   try {
-    const kafka = new Kafka({
+    const kafkaConfig: any = {
       clientId: "auth-service",
-      brokers: [process.env.KAFKA_BROKER || "localhost:9092"],
-    });
+      brokers: [process.env.KAFKA_BROKER_URL || process.env.KAFKA_BROKER || "localhost:9092"],
+    };
+
+    if (process.env.KAFKA_SASL_USERNAME && process.env.KAFKA_SASL_PASSWORD) {
+      kafkaConfig.ssl = true;
+      kafkaConfig.sasl = {
+        mechanism: "scram-sha-256",
+        username: process.env.KAFKA_SASL_USERNAME,
+        password: process.env.KAFKA_SASL_PASSWORD,
+      };
+    }
+
+    const kafka = new Kafka(kafkaConfig);
     admin = kafka.admin();
     await admin.connect();
 

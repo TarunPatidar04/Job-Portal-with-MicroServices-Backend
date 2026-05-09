@@ -5,10 +5,21 @@ dotenv.config();
 
 export const startSendMailConsumer = async () => {
   try {
-    const kafka = new Kafka({
+    const kafkaConfig: any = {
       clientId: "mail-service",
-      brokers: [process.env.KAFKA_BROKER_URL || "localhost:9092"],
-    });
+      brokers: [process.env.KAFKA_BROKER_URL || process.env.KAFKA_BROKER || "localhost:9092"],
+    };
+
+    if (process.env.KAFKA_SASL_USERNAME && process.env.KAFKA_SASL_PASSWORD) {
+      kafkaConfig.ssl = true;
+      kafkaConfig.sasl = {
+        mechanism: "scram-sha-256",
+        username: process.env.KAFKA_SASL_USERNAME,
+        password: process.env.KAFKA_SASL_PASSWORD,
+      };
+    }
+
+    const kafka = new Kafka(kafkaConfig);
 
     const consumer = kafka.consumer({ groupId: "mail-service-group" });
     await consumer.connect();
