@@ -4,7 +4,7 @@ dotenv.config();
 import router from "./routes.js";
 import cors from "cors";
 import { v2 as cloudinary } from "cloudinary";
-import { startSendMailConsumer } from "./consumer.js";
+
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -12,7 +12,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-startSendMailConsumer();
+
 
 const app = express();
 app.use(cors({ origin: "*" }));

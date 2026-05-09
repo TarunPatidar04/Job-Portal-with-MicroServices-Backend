@@ -3,12 +3,41 @@ import dotenv from "dotenv";
 dotenv.config();
 import { v2 as cloudinary } from "cloudinary";
 import { GoogleGenAI } from "@google/genai";
-
+import nodemailer from "nodemailer";
 const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY_GEMINI });
 
 router.get("/", (req, res) => {
   res.send("Utils Service");
+});
+
+router.post("/send-mail", async (req, res) => {
+  try {
+    const { to, subject, html } = req.body;
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: "HireHeven <noreply>",
+      to,
+      subject,
+      html,
+    });
+
+    return res.status(200).json({ message: "Mail sent successfully" });
+  } catch (error: any) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ message: error.message || "Failed to send mail" });
+  }
 });
 
 router.post("/upload", async (req, res) => {

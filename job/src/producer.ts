@@ -1,82 +1,20 @@
-import { Admin, Kafka, Producer } from "kafkajs";
-import dotenv from "dotenv";
-dotenv.config();
-
-let producer: Producer;
-let admin: Admin;
+import axios from "axios";
 
 export const connectKafka = async () => {
-  try {
-    const kafkaConfig: any = {
-      clientId: "job-service",
-      brokers: [process.env.KAFKA_BROKER_URL || process.env.KAFKA_BROKER || "localhost:9092"],
-    };
-
-    if (process.env.KAFKA_SASL_USERNAME && process.env.KAFKA_SASL_PASSWORD) {
-      kafkaConfig.ssl = true;
-      kafkaConfig.sasl = {
-        mechanism: "scram-sha-256",
-        username: process.env.KAFKA_SASL_USERNAME,
-        password: process.env.KAFKA_SASL_PASSWORD,
-      };
-    }
-
-    const kafka = new Kafka(kafkaConfig);
-    admin = kafka.admin();
-    await admin.connect();
-
-    const topics = await admin.listTopics();
-    console.log("Kafka Connected", topics);
-
-    if (!topics.includes("send-mail")) {
-      await admin.createTopics({
-        topics: [
-          {
-            topic: "send-mail",
-            numPartitions: 1,
-            replicationFactor: 1,
-          },
-        ],
-      });
-      console.log("✅ Topic Created 'send-mail' ");
-    }
-
-    await admin.disconnect();
-
-    producer = kafka.producer();
-    await producer.connect();
-    console.log("✅ connected to kafka Producer Connected");
-  } catch (error) {
-    console.log("Error in kafka connection", error);
-  }
+  console.log("Kafka connection bypassed, using HTTP for mails");
 };
 
 export const publicToTopic = async (topic: string, message: any) => {
-  if (!producer) {
-    console.log("kafka producer is not initilized");
-    return;
-  }
-  try {
-    await producer.send({
-      topic: topic,
-      messages: [
-        {
-          value: JSON.stringify(message),
-        },
-      ],
-    });
-  } catch (error) {
-    console.log("Error in kafka producer PublicToTopic", error);
+  if (topic === "send-mail") {
+    try {
+      await axios.post(`${process.env.UPLOAD_SERVICE}/api/utils/send-mail`, message);
+      console.log("Mail request sent to utils service");
+    } catch (error) {
+      console.log("Error sending mail request to utils service", error);
+    }
   }
 };
 
 export const disconnectKafka = async () => {
-  try {
-    if (producer) {
-      await producer.disconnect();
-      console.log("✅ kafka producer disconnected");
-    }
-  } catch (error) {
-    console.log("Error in kafka producer disconnect", error);
-  }
+  console.log("Kafka bypassed disconnected");
 };
